@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Data Management System</title>
+    <!-- Include XLSX and jsPDF libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Basic Styles */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --hover-color: #2980b9;
+            --text-color: #333;
+            --background-color: #ecf0f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex-grow: 1;
+            flex-wrap: wrap;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: var(--primary-color);
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: left;
+            transition: background-color 0.3s ease;
+        }
+
+        .sidebar button:hover {
+            background-color: var(--hover-color);
+        }
+
+        .sidebar-toggle {
+            display: none;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            border-radius: 5px;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            width: calc(100% - 250px);
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .sidebar.hidden + .main-content {
+            width: 100%;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* Table Styling */
+        .dashboard-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .dashboard-table th, .dashboard-table td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        .dashboard-table th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .form-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-section button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .form-section button:hover {
+            background-color: var(--hover-color);
+        }
+
+        .batch-select {
+            margin-bottom: 20px;
+        }
+
+        .student-actions button {
+            margin-right: 5px;
+            padding: 5px 10px;
+            font-size: 14px;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .student-actions button.edit-btn {
+            background-color: #f1c40f;
+            color: white;
+        }
+
+        .student-actions button.edit-btn:hover {
+            background-color: #d4ac0d;
+        }
+
+        .student-actions button.delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .student-actions button.delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-bar input {
+            padding: 10px;
+            width: 300px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .search-bar button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .search-bar button:hover {
+            background-color: var(--hover-color);
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 50px; /* Adjusted to align with search bar */
+            width: 100%;
+            background-color: white;
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            list-style: none;
+        }
+
+        .search-suggestions li {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .search-suggestions li:hover {
+            background-color: #f0f0f0;
+        }
+
+        .search-suggestions li:active {
+            background-color: #ddd;
+        }
+
+        .print-btn {
+            padding: 10px 20px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .print-btn:hover {
+            background-color: #2ecc71;
+        }
+
+        .print-section {
+            margin-top: 20px;
+        }
+
+        .print-section label {
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .print-section select,
+        .print-section button {
+            padding: 10px;
+            margin-right: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
+
+        .print-section button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .print-section button:hover {
+            background-color: var(--hover-color);
+        }
+
+        .document-actions button {
+            margin-right: 5px;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .document-actions button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Modified: Added styles for Export and Import buttons under Batch Select */
+        .batch-select button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px; /* Added margin for spacing */
+            transition: background-color 0.3s ease;
+            width: 100%; /* Make buttons full width */
+        }
+
+        .batch-select button:hover {
+            background-color: var(--hover-color);
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 2000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; /* 5% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 600px; /* Could be more or less, depending on screen size */
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-modal:hover,
+        .close-modal:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        /* Footer Styling */
+        .footer {
+            background-color: var(--secondary-color);
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 14px;
+        }
+
+        /* Responsive Sidebar */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                height: 100%;
+                top: 0;
+                left: 0;
+                transform: translateX(-100%);
+                z-index: 999;
+            }
+
+            .sidebar-toggle {
+                display: block;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .sidebar.hidden {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.visible {
+                transform: translateX(0);
+            }
+
+            /* Adjust search bar layout on small screens */
+            .search-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .search-bar input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .search-bar button {
+                width: 100%;
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="sidebar">
+            <h1>MS Data Management System</h1>
+            <button id="dashboard-btn" data-section="dashboard">Dashboard</button>
+            <button id="add-student-btn" data-section="add-student">Add Student</button>
+            <button id="documents-btn" data-section="documents">Documents</button>
+            <button id="print-btn" data-section="print">Print Batch-wise</button> <!-- Print button -->
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="section active">
+                <h2>Dashboard</h2>
+                <div class="form-group">
+                    <label for="year-filter">Select Year</label>
+                    <select id="year-filter" onchange="filterStudents()">
+                        <option value="">All Years</option>
+                        <!-- Dynamic Years will be populated here -->
+                    </select>
+                </div>
+                <!-- Search Bar with Search Button -->
+                <div class="search-bar">
+                    <label for="search-id">Search by Student ID or National ID Card Number:</label>
+                    <input type="text" id="search-id" placeholder="Enter Student ID or National ID Card Number" onkeyup="handleSearch(event)">
+                    <button onclick="triggerSearch()">Search</button>
+                    <ul id="search-results" class="search-suggestions"></ul>
+                </div>
+
+                <div class="dashboard-table">
+                    <h3>Student List</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Address</th>
+                                <th>Telephone</th>
+                                <th>Email</th>
+                                <th>National ID Card Number</th>
+                                <th>School</th>
+                                <th>Batch Year</th> <!-- Added Batch Year Column -->
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-list">
+                            <!-- Student data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add Student Section -->
+            <div id="add-student" class="section">
+                <h2>Add Student</h2>
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="student-id">Student ID</label>
+                        <input type="text" id="student-id" placeholder="Student ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="student-name">Student Name</label>
+                        <input type="text" id="student-name" placeholder="Student Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <input type="text" id="address" placeholder="Address">
+                    </div>
+                    <div class="form-group">
+                        <label for="telephone">Telephone</label>
+                        <input type="text" id="telephone" placeholder="Telephone">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="Email">
+                    </div>
+                    <div class="form-group">
+                        <label for="national-id">National ID Card Number</label>
+                        <input type="text" id="national-id" placeholder="National ID Card Number">
+                    </div>
+                    <div class="form-group">
+                        <label for="school">School</label>
+                        <input type="text" id="school" placeholder="School">
+                    </div>
+                    <div class="form-group">
+                        <label for="batch-year">Batch Year</label>
+                        <input type="text" id="batch-year" placeholder="Enter Batch Year (e.g. 2020)">
+                    </div>
+                    <div class="form-group">
+                        <button id="submit-btn" onclick="submitStudent()">Add Student</button>
+                        <button id="cancel-edit-btn" onclick="cancelEdit()" style="display: none; background-color: #95a5a6;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Section -->
+            <div id="documents" class="section">
+                <h2>Documents</h2>
+                <div class="document-actions">
+                    <button onclick="downloadCSV()">Download All CSV</button> <!-- Modified Button Label -->
+                    <button onclick="downloadExcel()">Download All Excel</button> <!-- Modified Button Label -->
+                </div>
+
+                <!-- Batch Select and Export Buttons -->
+                <div class="batch-select">
+                    <label for="export-batch">Select Batch for Export</label>
+                    <select id="export-batch">
+                        <option value="">Select Batch</option>
+                        <!-- Dynamic Years will be populated here -->
+                    </select>
+                    <button onclick="exportBatchCSV()">Export Selected Batch CSV</button> <!-- Modified Button Label -->
+                    <button onclick="exportBatchExcel()">Export Selected Batch Excel</button> <!-- Modified Button Label -->
+                </div>
+
+                <!-- Import Section -->
+                <div class="batch-select">
+                    <label for="import-file">Import Students Data</label>
+                    <input type="file" id="import-file" accept=".csv, .xlsx, .xls">
+                    <button onclick="importData()">Import</button>
+                </div>
+            </div>
+
+            <!-- Print Section -->
+            <div id="print" class="section">
+                <h2>Print Batch-wise</h2>
+                <div class="print-section">
+                    <label for="print-batch">Select Batch</label>
+                    <select id="print-batch">
+                        <option value="">Select Batch</option>
+                        <!-- Dynamic Years will be populated here -->
+                    </select>
+                    <button onclick="printBatch()">Print</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        Designed by Oshan Dimantha
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeEditModal()">&times;</span>
+            <h2>Edit Student</h2>
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="edit-student-id">Student ID</label>
+                    <input type="text" id="edit-student-id" placeholder="Student ID" disabled> <!-- Disabled to prevent editing -->
+                </div>
+                <div class="form-group">
+                    <label for="edit-student-name">Student Name</label>
+                    <input type="text" id="edit-student-name" placeholder="Student Name">
+                </div>
+                <div class="form-group">
+                    <label for="edit-address">Address</label>
+                    <input type="text" id="edit-address" placeholder="Address">
+                </div>
+                <div class="form-group">
+                    <label for="edit-telephone">Telephone</label>
+                    <input type="text" id="edit-telephone" placeholder="Telephone">
+                </div>
+                <div class="form-group">
+                    <label for="edit-email">Email</label>
+                    <input type="email" id="edit-email" placeholder="Email">
+                </div>
+                <div class="form-group">
+                    <label for="edit-national-id">National ID Card Number</label>
+                    <input type="text" id="edit-national-id" placeholder="National ID Card Number">
+                </div>
+                <div class="form-group">
+                    <label for="edit-school">School</label>
+                    <input type="text" id="edit-school" placeholder="School">
+                </div>
+                <div class="form-group">
+                    <label for="edit-batch-year">Batch Year</label>
+                    <input type="text" id="edit-batch-year" placeholder="Enter Batch Year (e.g. 2020)">
+                </div>
+                <div class="form-group">
+                    <button onclick="updateStudent()">Update Student</button>
+                    <button onclick="closeEditModal()" style="background-color: #95a5a6;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Sidebar for Responsive Design
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('visible');
+                sidebar.classList.toggle('hidden');
+            }
+        }
+
+        // Close sidebar when clicking outside on small screens
+        window.addEventListener('click', function(event) {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleButton = document.querySelector('.sidebar-toggle');
+            if (window.innerWidth <= 768 && sidebar.classList.contains('visible')) {
+                if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
+                    sidebar.classList.remove('visible');
+                    sidebar.classList.add('hidden');
+                }
+            }
+        });
+
+        // Switch Between Sections
+        document.querySelectorAll('.sidebar button').forEach(button => {
+            button.addEventListener('click', () => {
+                const section = document.getElementById(button.dataset.section);
+                document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+                section.classList.add('active');
+
+                // Close sidebar on small screens after selection
+                if (window.innerWidth <= 768) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // Initialize Students from localStorage or use default
+        let students = JSON.parse(localStorage.getItem('students')) || [
+            { id: "1", name: "John Doe", address: "123 Main St", telephone: "1234567890", email: "johndoe@gmail.com", nationalId: "1234567890123", school: "XYZ School", year: "2020" },
+            { id: "2", name: "Jane Smith", address: "456 Elm St", telephone: "0987654321", email: "janesmith@gmail.com", nationalId: "2345678901234", school: "ABC School", year: "2021" },
+            // More students can be added here
+        ];
+
+        // Clean the students array to remove any incomplete or invalid entries
+        students = students.filter(student => {
+            return student.id && student.name && student.nationalId;
+        });
+
+        function saveToLocalStorage() {
+            localStorage.setItem('students', JSON.stringify(students));
+        }
+
+        // Function to populate dynamic batch-year dropdowns
+        function populateBatchYearDropdowns() {
+            const yearFilter = document.getElementById('year-filter');
+            const printBatch = document.getElementById('print-batch');
+            const exportBatch = document.getElementById('export-batch');
+
+            // Get unique years from students data, excluding "Unknown"
+            const uniqueYears = [...new Set(students.map(student => student.year))].filter(year => year !== "Unknown").sort((a, b) => a - b);
+
+            // Clear existing options except the first one
+            clearDropdownOptions(yearFilter);
+            clearDropdownOptions(printBatch);
+            clearDropdownOptions(exportBatch);
+
+            // Populate the dropdowns
+            uniqueYears.forEach(year => {
+                const option1 = document.createElement('option');
+                option1.value = year;
+                option1.textContent = `Batch ${year}`;
+                yearFilter.appendChild(option1);
+
+                const option2 = document.createElement('option');
+                option2.value = year;
+                option2.textContent = `Batch ${year}`;
+                printBatch.appendChild(option2);
+
+                const option3 = document.createElement('option');
+                option3.value = year;
+                option3.textContent = `Batch ${year}`;
+                exportBatch.appendChild(option3);
+            });
+        }
+
+        // Helper function to clear dropdown options except the first one
+        function clearDropdownOptions(dropdown) {
+            while (dropdown.options.length > 1) {
+                dropdown.remove(1);
+            }
+        }
+
+        // Filter Students based on Year and Search Input (Case-Insensitive)
+        function filterStudents() {
+            const year = document.getElementById('year-filter').value;
+            const searchValue = document.getElementById('search-id').value.trim().toLowerCase();
+            const studentList = document.getElementById('student-list');
+            studentList.innerHTML = '';
+            let filteredStudents = [...students];
+
+            if (year) {
+                filteredStudents = filteredStudents.filter(student => String(student.year) === year);
+            }
+
+            if (searchValue) {
+                filteredStudents = filteredStudents.filter(student => 
+                    String(student.id).toLowerCase().includes(searchValue) || 
+                    String(student.nationalId).toLowerCase().includes(searchValue)
+                );
+            }
+
+            if (filteredStudents.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="9" style="text-align:center;">No students found.</td>`;
+                studentList.appendChild(row);
+                return;
+            }
+
+            filteredStudents.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${escapeHtml(student.id)}</td>
+                    <td>${escapeHtml(student.name)}</td>
+                    <td>${escapeHtml(student.address)}</td>
+                    <td>${escapeHtml(student.telephone)}</td>
+                    <td>${escapeHtml(student.email)}</td>
+                    <td>${escapeHtml(student.nationalId)}</td>
+                    <td>${escapeHtml(student.school)}</td>
+                    <td>${escapeHtml(student.year)}</td>
+                    <td>
+                        <button class="edit-btn" onclick="openEditModal('${escapeHtml(student.id)}')">Edit</button>
+                        <button class="delete-btn" onclick="deleteStudent('${escapeHtml(student.id)}')">Delete</button>
+                    </td>
+                `;
+                studentList.appendChild(row);
+            });
+        }
+
+        // Handle Search Input and Button
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                triggerSearch();
+            } else {
+                showSearchSuggestions();
+            }
+        }
+
+        function triggerSearch() {
+            filterStudents();
+            document.getElementById('search-results').innerHTML = ''; // Clear suggestions after search
+        }
+
+        // Show Search Suggestions
+        function showSearchSuggestions() {
+            const searchValue = document.getElementById('search-id').value.trim().toLowerCase();
+            const searchResults = document.getElementById('search-results');
+            searchResults.innerHTML = '';
+
+            if (searchValue) {
+                const filteredResults = students.filter(student => 
+                    String(student.id).toLowerCase().includes(searchValue) || 
+                    String(student.nationalId).toLowerCase().includes(searchValue)
+                );
+
+                if (filteredResults.length === 0) {
+                    const noResult = document.createElement('li');
+                    noResult.textContent = "No matching students found.";
+                    searchResults.appendChild(noResult);
+                    return;
+                }
+
+                filteredResults.forEach(result => {
+                    const li = document.createElement('li');
+                    // Determine which field matched
+                    const matchedBy = String(result.id).toLowerCase().includes(searchValue) ? 'Student ID' : 'National ID';
+                    li.textContent = `${matchedBy}: ${matchedBy === 'Student ID' ? result.id : result.nationalId} - ${result.name}`;
+                    li.addEventListener('click', () => {
+                        // Set the search input to the matched value
+                        document.getElementById('search-id').value = matchedBy === 'Student ID' ? result.id : result.nationalId;
+                        searchResults.innerHTML = '';
+                        // Call filterStudents to filter based on current filters
+                        filterStudents();
+                    });
+                    searchResults.appendChild(li);
+                });
+            } else {
+                // If search input is cleared, refresh the student list based on year filter
+                filterStudents();
+            }
+        }
+
+        // Function to escape HTML to prevent XSS attacks
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text || '').replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // Submit Student (Add)
+        function submitStudent() {
+            const studentId = document.getElementById('student-id').value.trim();
+            const studentName = document.getElementById('student-name').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const telephone = document.getElementById('telephone').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const nationalId = document.getElementById('national-id').value.trim();
+            const school = document.getElementById('school').value.trim();
+            const batchYear = document.getElementById('batch-year').value.trim();
+
+            // Validate National ID (must be 9, 12, or 13 digits)
+            if (!/^\d{9}$/.test(nationalId) && !/^\d{12}$/.test(nationalId) && !/^\d{13}$/.test(nationalId)) {
+                alert("Please enter a valid National ID with 9, 12, or 13 digits.");
+                return;
+            }
+
+            // Validate Email (basic email format)
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(email)) {
+                alert("Please enter a valid email address.");
+                return;
+            }
+
+            // Validate Telephone (must be 10 digits)
+            if (!/^\d{10}$/.test(telephone)) {
+                alert("Please enter a valid 10-digit telephone number.");
+                return;
+            }
+
+            // Validate Batch Year (optional - but it's good to check if it's a valid year)
+            if (batchYear && !/^\d{4}$/.test(batchYear)) {
+                alert("Please enter a valid year (e.g., 2020).");
+                return;
+            }
+
+            // Check for duplicate Student ID (Case-Insensitive)
+            const existingId = students.find(student => String(student.id).toLowerCase() === studentId.toLowerCase());
+            if (existingId) {
+                alert("A student with this Student ID already exists.");
+                return;
+            }
+
+            // Check for duplicate National ID (Case-Insensitive)
+            const existingNationalId = students.find(student => String(student.nationalId).toLowerCase() === nationalId.toLowerCase());
+            if (existingNationalId) {
+                alert("A student with this National ID Card Number already exists.");
+                return;
+            }
+
+            // Add new student
+            const newStudent = {
+                id: String(studentId), // Ensure ID is a string
+                name: studentName,
+                address: address,
+                telephone: telephone,
+                email: email,
+                nationalId: String(nationalId), // Ensure National ID is a string
+                school: school,
+                year: batchYear || "Unknown"
+            };
+            students.push(newStudent);
+            alert("Student added successfully!");
+
+            // Reset form
+            document.querySelectorAll('.form-group input').forEach(input => input.value = '');
+
+            // Save to localStorage and refresh list
+            saveToLocalStorage();
+            populateBatchYearDropdowns();
+            filterStudents();
+        }
+
+        // Edit Modal Functions
+        let editingStudentId = null;
+
+        function openEditModal(id) {
+            const student = students.find(s => String(s.id).toLowerCase() === String(id).toLowerCase()); // Case-Insensitive Search
+            if (student) {
+                editingStudentId = String(student.id).toLowerCase(); // Store in lowercase for consistency
+                document.getElementById('edit-student-id').value = student.id;
+                document.getElementById('edit-student-name').value = student.name;
+                document.getElementById('edit-address').value = student.address;
+                document.getElementById('edit-telephone').value = student.telephone;
+                document.getElementById('edit-email').value = student.email;
+                document.getElementById('edit-national-id').value = student.nationalId;
+                document.getElementById('edit-school').value = student.school;
+                document.getElementById('edit-batch-year').value = student.year !== "Unknown" ? student.year : '';
+
+                // Show the modal
+                document.getElementById('edit-modal').style.display = "block";
+            } else {
+                alert("Student not found.");
+            }
+        }
+
+        function closeEditModal() {
+            editingStudentId = null;
+            document.getElementById('edit-modal').style.display = "none";
+            // Reset edit form
+            document.querySelectorAll('#edit-modal .form-group input').forEach(input => input.value = '');
+        }
+
+        function updateStudent() {
+            if (!editingStudentId) {
+                alert("No student is being edited.");
+                return;
+            }
+
+            const studentName = document.getElementById('edit-student-name').value.trim();
+            const address = document.getElementById('edit-address').value.trim();
+            const telephone = document.getElementById('edit-telephone').value.trim();
+            const email = document.getElementById('edit-email').value.trim();
+            const nationalId = document.getElementById('edit-national-id').value.trim();
+            const school = document.getElementById('edit-school').value.trim();
+            const batchYear = document.getElementById('edit-batch-year').value.trim();
+
+            // Validate National ID (must be 9, 12, or 13 digits)
+            if (!/^\d{9}$/.test(nationalId) && !/^\d{12}$/.test(nationalId) && !/^\d{13}$/.test(nationalId)) {
+                alert("Please enter a valid National ID with 9, 12, or 13 digits.");
+                return;
+            }
+
+            // Validate Email (basic email format)
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(email)) {
+                alert("Please enter a valid email address.");
+                return;
+            }
+
+            // Validate Telephone (must be 10 digits)
+            if (!/^\d{10}$/.test(telephone)) {
+                alert("Please enter a valid 10-digit telephone number.");
+                return;
+            }
+
+            // Validate Batch Year (optional - but it's good to check if it's a valid year)
+            if (batchYear && !/^\d{4}$/.test(batchYear)) {
+                alert("Please enter a valid year (e.g., 2020).");
+                return;
+            }
+
+            // Check for duplicate National ID (Case-Insensitive, excluding current student)
+            const existingNationalId = students.find(student => 
+                String(student.nationalId).toLowerCase() === nationalId.toLowerCase() && 
+                String(student.id).toLowerCase() !== editingStudentId
+            );
+            if (existingNationalId) {
+                alert("A student with this National ID Card Number already exists.");
+                return;
+            }
+
+            // Update student
+            const studentIndex = students.findIndex(student => String(student.id).toLowerCase() === editingStudentId);
+            if (studentIndex !== -1) {
+                students[studentIndex] = {
+                    id: students[studentIndex].id, // Keep the original ID
+                    name: studentName,
+                    address: address,
+                    telephone: telephone,
+                    email: email,
+                    nationalId: nationalId,
+                    school: school,
+                    year: batchYear || "Unknown"
+                };
+                alert("Student updated successfully!");
+            } else {
+                alert("Student not found.");
+                return;
+            }
+
+            // Save to localStorage and refresh list
+            saveToLocalStorage();
+            populateBatchYearDropdowns();
+            filterStudents();
+
+            // Close the modal
+            closeEditModal();
+        }
+
+        function cancelEdit() {
+            // Reset form fields in Add Student section
+            document.querySelectorAll('#add-student .form-group input').forEach(input => input.value = '');
+            // Hide the Cancel button in Add Student section if necessary
+            document.getElementById('cancel-edit-btn').style.display = "none";
+        }
+
+        // Delete Student
+        function deleteStudent(id) {
+            if (!id) {
+                alert("Invalid Student ID.");
+                return;
+            }
+
+            if (confirm("Are you sure you want to delete this student?")) {
+                const studentIndex = students.findIndex(student => String(student.id).toLowerCase() === String(id).toLowerCase()); // Case-Insensitive Search
+                if (studentIndex !== -1) {
+                    students.splice(studentIndex, 1);
+                    saveToLocalStorage();
+                    populateBatchYearDropdowns();
+                    filterStudents();
+                    alert("Student deleted successfully!");
+                } else {
+                    alert("Student not found.");
+                }
+            }
+        }
+
+        // Export Functions
+        function downloadCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Student ID,Name,Address,Telephone,Email,National ID Card Number,School,Batch Year\n";
+            students.forEach(student => {
+                const row = [
+                    `"${escapeCsv(student.id)}"`, 
+                    `"${escapeCsv(student.name)}"`, 
+                    `"${escapeCsv(student.address)}"`, 
+                    `"${escapeCsv(student.telephone)}"`, 
+                    `"${escapeCsv(student.email)}"`, 
+                    `"${escapeCsv(student.nationalId)}"`, 
+                    `"${escapeCsv(student.school)}"`, 
+                    `"${escapeCsv(student.year)}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "students_all_batches.csv"); // Modified Filename
+            document.body.appendChild(link); // Required for Firefox
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function escapeCsv(text) {
+            if (typeof text === 'string') {
+                return text.replace(/"/g, '""');
+            }
+            return text;
+        }
+
+        function downloadExcel() {
+            const ws = XLSX.utils.json_to_sheet(students.map(student => ({
+                "Student ID": student.id,
+                "Name": student.name,
+                "Address": student.address,
+                "Telephone": student.telephone,
+                "Email": student.email,
+                "National ID Card Number": student.nationalId,
+                "School": student.school,
+                "Batch Year": student.year
+            })));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Students");
+            XLSX.writeFile(wb, "students_all_batches.xlsx"); // Modified Filename
+        }
+
+        // Batch-wise Export Functions
+        function exportBatchCSV() {
+            const batch = document.getElementById('export-batch').value;
+            if (!batch) {
+                alert("Please select a batch year to export.");
+                return;
+            }
+            const filteredStudents = students.filter(student => String(student.year) === batch);
+            if (filteredStudents.length === 0) {
+                alert("No students found for the selected batch.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Student ID,Name,Address,Telephone,Email,National ID Card Number,School,Batch Year\n";
+            filteredStudents.forEach(student => {
+                const row = [
+                    `"${escapeCsv(student.id)}"`, 
+                    `"${escapeCsv(student.name)}"`, 
+                    `"${escapeCsv(student.address)}"`, 
+                    `"${escapeCsv(student.telephone)}"`, 
+                    `"${escapeCsv(student.email)}"`, 
+                    `"${escapeCsv(student.nationalId)}"`, 
+                    `"${escapeCsv(student.school)}"`, 
+                    `"${escapeCsv(student.year)}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `students_batch_${batch}.csv`); // Filename includes Batch Year
+            document.body.appendChild(link); // Required for Firefox
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportBatchExcel() {
+            const batch = document.getElementById('export-batch').value;
+            if (!batch) {
+                alert("Please select a batch year to export.");
+                return;
+            }
+            const filteredStudents = students.filter(student => String(student.year) === batch);
+            if (filteredStudents.length === 0) {
+                alert("No students found for the selected batch.");
+                return;
+            }
+
+            const ws = XLSX.utils.json_to_sheet(filteredStudents.map(student => ({
+                "Student ID": student.id,
+                "Name": student.name,
+                "Address": student.address,
+                "Telephone": student.telephone,
+                "Email": student.email,
+                "National ID Card Number": student.nationalId,
+                "School": student.school,
+                "Batch Year": student.year
+            })));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, `Batch_${batch}`);
+            XLSX.writeFile(wb, `students_batch_${batch}.xlsx`); // Filename includes Batch Year
+        }
+
+        // Import Function
+        function importData() {
+            const fileInput = document.getElementById('import-file');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a file to import.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = e.target.result;
+                let workbook;
+                try {
+                    workbook = XLSX.read(data, { type: 'binary' });
+                } catch (error) {
+                    alert("Invalid file format. Please upload a valid CSV or Excel file.");
+                    return;
+                }
+
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const importedData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                // Validate and process imported data
+                let newEntries = [];
+                let errorEntries = [];
+                importedData.forEach((row, index) => {
+                    // Extract and trim fields
+                    const studentId = String(row["Student ID"] || "").trim();
+                    const name = String(row["Name"] || "").trim();
+                    const address = String(row["Address"] || "").trim();
+                    const telephone = String(row["Telephone"] || "").trim();
+                    const email = String(row["Email"] || "").trim();
+                    const nationalId = String(row["National ID Card Number"] || "").trim();
+                    const school = String(row["School"] || "").trim();
+                    const batchYear = String(row["Batch Year"] || "").trim();
+
+                    // Validate required fields
+                    if (!studentId || !name || !nationalId) {
+                        errorEntries.push(`Row ${index + 2}: Missing required fields.`);
+                        return;
+                    }
+
+                    // Validate National ID (must be 9, 12, or 13 digits)
+                    if (!/^\d{9}$/.test(nationalId) && !/^\d{12}$/.test(nationalId) && !/^\d{13}$/.test(nationalId)) {
+                        errorEntries.push(`Row ${index + 2}: Invalid National ID (${nationalId}).`);
+                        return;
+                    }
+
+                    // Validate Email (basic email format)
+                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (email && !emailPattern.test(email)) {
+                        errorEntries.push(`Row ${index + 2}: Invalid Email (${email}).`);
+                        return;
+                    }
+
+                    // Validate Telephone (must be 10 digits)
+                    if (!/^\d{10}$/.test(telephone)) {
+                        errorEntries.push(`Row ${index + 2}: Invalid Telephone (${telephone}).`);
+                        return;
+                    }
+
+                    // Validate Batch Year (optional - but it's good to check if it's a valid year)
+                    if (batchYear && !/^\d{4}$/.test(batchYear)) {
+                        errorEntries.push(`Row ${index + 2}: Invalid Batch Year (${batchYear}).`);
+                        return;
+                    }
+
+                    // Check for duplicate Student ID (Case-Insensitive)
+                    const existingId = students.find(student => String(student.id).toLowerCase() === studentId.toLowerCase());
+                    if (existingId) {
+                        errorEntries.push(`Row ${index + 2}: Duplicate Student ID (${studentId}).`);
+                        return;
+                    }
+
+                    // Check for duplicate National ID (Case-Insensitive)
+                    const existingNationalId = students.find(student => String(student.nationalId).toLowerCase() === nationalId.toLowerCase());
+                    if (existingNationalId) {
+                        errorEntries.push(`Row ${index + 2}: Duplicate National ID (${nationalId}).`);
+                        return;
+                    }
+
+                    // All validations passed, add to new entries
+                    const newStudent = {
+                        id: String(studentId), // Ensure ID is a string
+                        name: name,
+                        address: address,
+                        telephone: telephone,
+                        email: email,
+                        nationalId: nationalId,
+                        school: school,
+                        year: batchYear || "Unknown"
+                    };
+                    newEntries.push(newStudent);
+                });
+
+                // Add new entries to students array
+                if (newEntries.length > 0) {
+                    students = students.concat(newEntries);
+                    saveToLocalStorage();
+                    populateBatchYearDropdowns();
+                    filterStudents();
+                    alert(`${newEntries.length} students imported successfully.`);
+                }
+
+                // Notify about duplicates or errors
+                if (errorEntries.length > 0) {
+                    alert(`Some entries were not imported due to errors:\n\n${errorEntries.join('\n')}`);
+                }
+
+                // Reset file input
+                fileInput.value = "";
+            };
+
+            if (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                reader.readAsBinaryString(file);
+            } else {
+                alert("Unsupported file format. Please upload a CSV or Excel file.");
+            }
+        }
+
+        // Print Batch-wise Function
+        function printBatch() {
+            const batch = document.getElementById('print-batch').value;
+            if (!batch) {
+                alert("Please select a batch year to print.");
+                return;
+            }
+            const filteredStudents = students.filter(student => String(student.year) === batch);
+            if (filteredStudents.length === 0) {
+                alert("No students found for the selected batch.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Added Print Header
+            doc.setFontSize(18);
+            doc.text("Krishan Madhuwantha Engineering Technology", 14, 20); // Header Title
+            doc.setFontSize(14);
+            doc.text(`Batch Year: ${batch}`, 14, 30); // Batch Year
+            doc.setFontSize(12);
+            doc.setTextColor(0); // Black color
+
+            // Define table columns
+            const headers = [["Student ID", "Name", "Address", "Telephone", "Email", "National ID", "School", "Batch Year"]];
+            const data = filteredStudents.map(student => [
+                student.id, 
+                student.name, 
+                student.address, 
+                student.telephone, 
+                student.email, 
+                student.nationalId, 
+                student.school, 
+                student.year
+            ]);
+
+            // Add headers
+            doc.setFont(undefined, 'bold');
+            headers.forEach(header => {
+                doc.text(header.join(" | "), 14, 40);
+                // Only one header row, so no need to iterate
+            });
+
+            // Add data rows
+            doc.setFont(undefined, 'normal');
+            let startY = 50;
+            data.forEach(row => {
+                doc.text(row.join(" | "), 14, startY);
+                startY += 10;
+                if (startY > 280) { // Check for page overflow
+                    doc.addPage();
+                    startY = 20;
+                }
+            });
+
+            // Open the PDF in a new window and trigger the print dialog
+            const pdfBlob = doc.output('bloburl');
+            const printWindow = window.open(pdfBlob, '_blank');
+            if (printWindow) {
+                printWindow.focus();
+                printWindow.onload = function() {
+                    printWindow.print();
+                };
+            } else {
+                alert("Unable to open print window. Please allow pop-ups for this website.");
+            }
+        }
+
+        // Initial Setup
+        function initialize() {
+            populateBatchYearDropdowns();
+            filterStudents();
+        }
+
+        // Run initial setup on page load
+        window.onload = initialize;
+
+        // Close the modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('edit-modal');
+            if (event.target == modal) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>
